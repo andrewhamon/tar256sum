@@ -10,6 +10,9 @@ Repeatable tarball checksums in 100 lines of go.
 
 GitHub recently [broke](https://github.com/orgs/community/discussions/45830) many build pipelines [by accident](https://github.blog/changelog/2023-01-30-git-archive-checksums-may-change/). This project explores an alternative checksum method that might be more resilient.
 
+## Limitations
+- Currently only supports `.tar.gz`
+
 ## Install
 
 Nix:
