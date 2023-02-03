@@ -2,7 +2,7 @@
 Repeatable tarball checksums in 100 lines of go.
 
 - Doesn't write to disk
-- Fully streaming - stable memory footprint
+- Fully streaming - minimal memory footprint
 - Resilient from zip-bomb attacks (see `--max-decompress`)
 - Stable output
 
