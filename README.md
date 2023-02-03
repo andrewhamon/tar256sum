@@ -2,7 +2,6 @@
 Repeatable tarball checksums in 100 lines of go.
 
 - Doesn't write to disk
-- Fully streaming - minimal memory footprint
 - Resilient from zip-bomb attacks (see `--max-decompress`)
 - Stable output
 
@@ -12,6 +11,7 @@ GitHub recently [broke](https://github.com/orgs/community/discussions/45830) man
 
 ## Limitations
 - Currently only supports `.tar.gz`
+- Needs ~512 bytes of memory per file in the archive
 
 ## Install
 
