@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"hash"
 	"io"
@@ -13,14 +14,23 @@ import (
 	"sort"
 )
 
+const DefaultMaxDecompressionBytes = 10_000_000_000
+
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	maxSize := flag.Int64("max-decompress", DefaultMaxDecompressionBytes, "Maximum decompressed size, in bytes")
+	flag.Parse()
+
 	gz, err := gzip.NewReader(os.Stdin)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	tr := tar.NewReader(gz)
+	gzLimited := &io.LimitedReader{R: gz, N: *maxSize}
+
+	tr := tar.NewReader(gzLimited)
 	h := sha256.New()
 	entryHashes := make(map[string]string)
 
@@ -38,13 +48,24 @@ func main() {
 		if _, exists := entryHashes[hdrHash]; exists {
 			log.Fatal("Encountered duplicate tar headers")
 		}
-		entryHashes[hdrHash] = hashContents(tr, h)
+		entryHashes[hdrHash], err = hashContents(tr, h)
+		if err != nil {
+			if gzLimited.N <= 0 {
+				log.Fatal("Reached max decompress limit")
+			} else {
+				log.Fatal(err)
+			}
+		}
 	}
 
 	for _, entryHash := range sortedMapKeys(entryHashes) {
 		contentHash := entryHashes[entryHash]
-
+		writeStringOrFatal(h, entryHash)
 		writeStringOrFatal(h, contentHash)
+	}
+
+	if gzLimited.N <= 0 {
+		log.Fatal("Reached max decompress limit")
 	}
 
 	fmt.Printf("%x  -\n", h.Sum(nil))
@@ -55,7 +76,7 @@ func hashHeader(hdr *tar.Header, h hash.Hash) string {
 	writeStringOrFatal(h, hdr.Name)
 	writeStringOrFatal(h, hdr.Linkname)
 
-	b8 := make([]byte, 9)
+	b8 := make([]byte, binary.MaxVarintLen64)
 	writeInt64OrFatal(h, hdr.Size, b8)
 	writeInt64OrFatal(h, hdr.Mode, b8)
 	writeInt64OrFatal(h, int64(hdr.Uid), b8)
@@ -77,14 +98,14 @@ func hashHeader(hdr *tar.Header, h hash.Hash) string {
 	return result
 }
 
-func hashContents(tr *tar.Reader, h hash.Hash) string {
+func hashContents(tr *tar.Reader, h hash.Hash) (string, error) {
 	_, err := io.Copy(h, tr)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	result := fmt.Sprintf("%x", h.Sum(nil))
 	h.Reset()
-	return result
+	return result, nil
 }
 
 func writeStringOrFatal(w io.Writer, s string) {
