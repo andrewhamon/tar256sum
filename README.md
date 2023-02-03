@@ -1,10 +1,14 @@
 # tar256sum
-Repeatable tarball hashes in 100 lines of go.
+Repeatable tarball checksums in 100 lines of go.
 
 - Doesn't write to disk
 - Fully streaming - stable memory footprint
 - Resilient from zip-bomb attacks (see `--max-decompress`)
 - Stable output
+
+## Why
+
+GitHub recently [broke](https://github.com/orgs/community/discussions/45830) many build pipelines [by accident](https://github.blog/changelog/2023-01-30-git-archive-checksums-may-change/). This project explores an alternative checksum method that might be more resilient.
 
 ## Install
 
@@ -70,10 +74,10 @@ cat archive.tar.gz | tar256sum
 ## How does this work?
 
 - for each tar entry:
-  - hash the entry header
-  - hash the contents of the entry
-  - store this pair of hashes
-- sort these pairs and hash them to produce final result
+  - checksum the entry header
+  - checksum the contents of the entry
+  - store this pair of checksums (in memory)
+- sort these pairs and checksum them to produce final result
 
 ## Why not `cat archive.tar.gz | gunzip | sha256sum`
 
@@ -81,7 +85,7 @@ You know, I'm starting to ask myself the same question. Obviously there is some
 zip bomb risk piping to gunzip (is there a flag for that with gunzip?). But I can
 only produce different git archive results with compression -- plain tar seems
 more stable across versions, so this program could perhaps be made way simpler
-by simply hashing the raw tar without sorting the entries.
+by simply checking the raw tar without sorting the entries.
 
 **If you know of two equivalent git tar archives (`git archive --format tar`)
-that have different content hashes, I would love to know about it.**
+that have different checksums, I would love to know about it.**
